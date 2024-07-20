@@ -65,7 +65,10 @@ func Compress(dataToCompress *[]byte) ([]byte, bool) {
 		//return *dataToCompress, canCompress
 	}
 
-	numOfTrailingZerosToIgnore := uint8(bitstructs.BYTE_LENGTH - (compressedBitLen % bitstructs.BYTE_LENGTH))
+	numOfTrailingZerosToIgnore := uint8(0)
+	if compressedBitLen%bitstructs.BYTE_LENGTH != 0 {
+		numOfTrailingZerosToIgnore = uint8(bitstructs.BYTE_LENGTH - (compressedBitLen % bitstructs.BYTE_LENGTH))
+	}
 	compressedData.WriteByte(numOfTrailingZerosToIgnore)
 	return compressedData.Bytes(), canCompress
 
@@ -91,8 +94,8 @@ func Decompress(data *[]byte) *[]byte {
 
 func serializeHuffmanCodes(hc map[byte]bitstructs.BitSequence) []byte {
 	//Will serialize as
-	//<char><bit_len><code-in-hex>_<char><bit_len>...<END>
-	//1 byte  1 byte      X bytes					   0x00
+	//<char><bit_len><code-in-hex>_<char><bit_len>...<END (2 0x00 bytes)>
+	//1 byte  1 byte      X bytes					  2 0x00 bytes
 	//Note: we use a bit length of 1 byte. if there's ever a case where we have a tree with depth > 255 this will fail causing incorrect data when decompressing most systems are 32 or 64 bits so a tree depth above that seems like unlikely so i think we are safe with one byte here.
 
 	var buf bytes.Buffer
@@ -109,7 +112,15 @@ func serializeHuffmanCodes(hc map[byte]bitstructs.BitSequence) []byte {
 		buf.WriteByte('_')
 	}
 	buf.Truncate(buf.Len() - 1)
-	buf.WriteByte(0x00) // signals end of huffman codes
+
+	// signals end of huffman codes use two bytes because if the uncompressed data has a zero that we need to huffman encode
+	// a single 0 byte to signal the end of the serialized string will cause problems as when deserializing it will stop at the
+	//first null byte. Since huffman codes are unique checking for a second null byte right after will ensure that we are
+	//at the end of the serialized string when we are trying to deserialize, this also works because according to our
+	//serialization rule there will never be a case where two null bytes appear back to back.
+	//One drawback of this of course if that we are adding more (needed) overhead to our final compressed string :(
+	buf.WriteByte(0x00)
+	buf.WriteByte(0x00)
 
 	//s := string(buf.Bytes())
 	//fmt.Println(s)
@@ -121,33 +132,35 @@ func serializeHuffmanCodes(hc map[byte]bitstructs.BitSequence) []byte {
 func deSerializeHuffmanCodesFromByteArray(data *[]byte) (map[byte]bitstructs.BitSequence, int) {
 
 	originalHuffmanCodes := make(map[byte]bitstructs.BitSequence)
-	if len(*data) < 3 {
+	if len(*data) < 5 {
 		return originalHuffmanCodes, 0
 	}
+
 	serializedHuffmanCodeLen := 1
-	for _, bt := range *data {
-		if bt == 0 {
+	for i, bt := range *data {
+		serializedHuffmanCodeLen++
+		if bt == 0x00 && i+1 < len(*data) && (*data)[i+1] == 0x00 {
 			break
 		}
-		serializedHuffmanCodeLen++
 	}
 
+	//serializedHuffmanCodes := (*data)[:serializedHuffmanCodeLen]
 	idx := 0
-
-	for idx < serializedHuffmanCodeLen && (*data)[idx] != 0 {
+	for idx < serializedHuffmanCodeLen && !isEndOfSerializedHuffmanCodes(data, idx, serializedHuffmanCodeLen) {
 		ch := (*data)[idx]
 		idx++
 		bitSeq := bitstructs.NewBitSequence(int((*data)[idx]))
 		idx++
 		hexStr := ""
-		for idx < serializedHuffmanCodeLen && (*data)[idx] != 0 && (*data)[idx] != '_' {
+		for (*data)[idx] != '_' && !isEndOfSerializedHuffmanCodes(data, idx, serializedHuffmanCodeLen) {
 			hexStr += string((*data)[idx])
 			idx++
 		}
-		if idx < serializedHuffmanCodeLen && ((*data)[idx] == '_' || (*data)[idx] == 0) {
+		if hexStr != "" {
 			num := utils.HexStringToInt(hexStr)
 			bitSeq.SetBitsFromNum(0, uint64(num))
-
+		}
+		if (*data)[idx] == '_' {
 			idx++
 		}
 
@@ -156,4 +169,8 @@ func deSerializeHuffmanCodesFromByteArray(data *[]byte) (map[byte]bitstructs.Bit
 	}
 	fmt.Println(originalHuffmanCodes)
 	return originalHuffmanCodes, serializedHuffmanCodeLen
+}
+
+func isEndOfSerializedHuffmanCodes(data *[]byte, idx int, endIdx int) bool {
+	return (idx < endIdx && (*data)[idx] == 0x00) && (idx+1 < endIdx && (*data)[idx+1] == 0x00)
 }
