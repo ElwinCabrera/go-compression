@@ -2,7 +2,6 @@ package huffman
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/ElwinCabrera/go-data-structs/bit-structs"
 	"github.com/ElwinCabrera/go-data-structs/trees"
 	"github.com/ElwinCabrera/go-data-structs/utils"
@@ -100,7 +99,6 @@ func serializeHuffmanCodes(hc map[byte]bitstructs.BitSequence) []byte {
 
 	var buf bytes.Buffer
 
-	fmt.Println(hc)
 	//byteToStringMap := make(map[byte]string)
 
 	for elem, bs := range hc {
@@ -121,10 +119,6 @@ func serializeHuffmanCodes(hc map[byte]bitstructs.BitSequence) []byte {
 	//One drawback of this of course if that we are adding more (needed) overhead to our final compressed string :(
 	buf.WriteByte(0x00)
 	buf.WriteByte(0x00)
-
-	//s := string(buf.Bytes())
-	//fmt.Println(s)
-	//fmt.Println(len(s))
 
 	return buf.Bytes()
 }
@@ -167,7 +161,6 @@ func deSerializeHuffmanCodesFromByteArray(data *[]byte) (map[byte]bitstructs.Bit
 		originalHuffmanCodes[ch] = bitSeq
 
 	}
-	fmt.Println(originalHuffmanCodes)
 	return originalHuffmanCodes, serializedHuffmanCodeLen
 }
 
