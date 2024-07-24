@@ -2,6 +2,7 @@ package huffman
 
 import (
 	"bytes"
+	utils2 "github.com/ElwinCabrera/go-compression/utils"
 	"github.com/ElwinCabrera/go-data-structs/bit-structs"
 	"github.com/ElwinCabrera/go-data-structs/trees"
 	"github.com/ElwinCabrera/go-data-structs/utils"
@@ -12,11 +13,9 @@ func Compress(dataToCompress *[]byte) ([]byte, bool) {
 	canCompress := true
 
 	//Get the frequency each byte appears in the data we want to compress
-	freqMap := make(map[byte]int)
-	for _, b := range *dataToCompress {
-		freqMap[b]++
-	}
-	// Create a huffman tree and generate the corresponding huffman code for each unique byte with the weights being the frequency that each byte occurs
+	freqMap := utils2.GetSymbolFrequencyMap(dataToCompress)
+
+	// Create a compression tree and generate the corresponding compression code for each unique byte with the weights being the frequency that each byte occurs
 	ht := trees.NewHuffmanTreeFromFrequencyMap(freqMap)
 	huffmanCodes := ht.GetHuffmanCodes()
 
@@ -27,7 +26,7 @@ func Compress(dataToCompress *[]byte) ([]byte, bool) {
 	}
 	bitSequenceOfCompressedData := bitstructs.NewBitSequence(compressedBitLen)
 
-	//For each character in the original uncompressed data append its corresponding huffman code to the bit sequence
+	//For each character in the original uncompressed data append its corresponding compression code to the bit sequence
 	compressedDataBitIdx := 0
 	for _, bt := range *dataToCompress {
 		huffmanCodeBitSeq := huffmanCodes[bt]
@@ -39,12 +38,12 @@ func Compress(dataToCompress *[]byte) ([]byte, bool) {
 		}
 	}
 
-	//Finally generate a serialized version of the generated huffman code to be sent
+	//Finally generate a serialized version of the generated compression code to be sent
 	//with the compressed data as these codes are the key needed for decompression.
 	serializedHuffmanCodes := serializeHuffmanCodes(huffmanCodes)
 	//compressedByteLen := len(serializedHuffmanCodes) + bitSequenceOfCompressedData.GetBytesAllocated()
 
-	//Create a buffer to hold the serialized huffman codes + the compressed data and start creating our end result
+	//Create a buffer to hold the serialized compression codes + the compressed data and start creating our end result
 	var compressedData bytes.Buffer
 	for _, bt := range serializedHuffmanCodes {
 		compressedData.WriteByte(bt)
@@ -55,11 +54,11 @@ func Compress(dataToCompress *[]byte) ([]byte, bool) {
 
 	if compressedData.Len() >= len(*dataToCompress) {
 		//If this is the case our compression resulted in a size bigger than the length of our original data
-		//this happens because we need to also append the huffman codes with the compressed data which can sometimes add
+		//this happens because we need to also append the compression codes with the compressed data which can sometimes add
 		//a lot more overhead to the total size of the compressed string.
-		//This is especially true for smaller data that we want to compress since in that case the huffman code overhead
+		//This is especially true for smaller data that we want to compress since in that case the compression code overhead
 		//will almost always be longer than the compressed data or even the original data.
-		//One way we can reduce this overhead is to also huffman compress the serialized huffman codes agan and again until it cant be compressed anymore
+		//One way we can reduce this overhead is to also compression compress the serialized compression codes agan and again until it cant be compressed anymore
 		canCompress = false
 		//return *dataToCompress, canCompress
 	}
@@ -74,7 +73,7 @@ func Compress(dataToCompress *[]byte) ([]byte, bool) {
 }
 
 func Decompress(data *[]byte) *[]byte {
-	//recreate the original huffman codes
+	//recreate the original compression codes
 	originalHuffmanCodes, serializedLen := deSerializeHuffmanCodesFromByteArray(data)
 	//serializedHuffmanCodeByteArr := (*data)[:serializedLen]
 
@@ -111,9 +110,9 @@ func serializeHuffmanCodes(hc map[byte]bitstructs.BitSequence) []byte {
 	}
 	buf.Truncate(buf.Len() - 1)
 
-	// signals end of huffman codes use two bytes because if the uncompressed data has a zero that we need to huffman encode
+	// signals end of compression codes use two bytes because if the uncompressed data has a zero that we need to compression encode
 	// a single 0 byte to signal the end of the serialized string will cause problems as when deserializing it will stop at the
-	//first null byte. Since huffman codes are unique checking for a second null byte right after will ensure that we are
+	//first null byte. Since compression codes are unique checking for a second null byte right after will ensure that we are
 	//at the end of the serialized string when we are trying to deserialize, this also works because according to our
 	//serialization rule there will never be a case where two null bytes appear back to back.
 	//One drawback of this of course if that we are adding more (needed) overhead to our final compressed string :(

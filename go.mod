@@ -1,5 +1,5 @@
-module github.com/ElwinCabrera/go-huffman
+module github.com/ElwinCabrera/go-compression
 
 go 1.22.4
 
-require github.com/ElwinCabrera/go-data-structs v1.0.4
+require github.com/ElwinCabrera/go-data-structs v1.0.5
