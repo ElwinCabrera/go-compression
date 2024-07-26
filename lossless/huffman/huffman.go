@@ -13,10 +13,10 @@ func Compress(dataToCompress *[]byte) ([]byte, bool) {
 	canCompress := true
 
 	//Get the frequency each byte appears in the data we want to compress
-	freqMap := utils2.GetSymbolFrequencyMap(dataToCompress)
+	freqMap, _ := utils2.GetSymbolFrequencyMap(dataToCompress, false)
 
 	// Create a compression tree and generate the corresponding compression code for each unique byte with the weights being the frequency that each byte occurs
-	ht := trees.NewHuffmanTreeFromFrequencyMap(freqMap)
+	ht := trees.NewHuffmanTreeFromFrequencyMap(*freqMap)
 	huffmanCodes := ht.GetHuffmanCodes()
 
 	//figure out the total bit length of the compressed data and create a new bit sequence to store the soon-to-be compressed data
