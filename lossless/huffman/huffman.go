@@ -2,7 +2,7 @@ package huffman
 
 import (
 	"bytes"
-	utils2 "github.com/ElwinCabrera/go-compression/utils"
+	utils2 "github.com/ElwinCabrera/go-compression/compressionutils"
 	"github.com/ElwinCabrera/go-data-structs/bit-structs"
 	"github.com/ElwinCabrera/go-data-structs/trees"
 	"github.com/ElwinCabrera/go-data-structs/utils"
@@ -13,7 +13,7 @@ func Compress(dataToCompress *[]byte) ([]byte, bool) {
 	canCompress := true
 
 	//Get the frequency each byte appears in the data we want to compress
-	freqMap, _ := utils2.GetSymbolFrequencyMap(dataToCompress, false)
+	freqMap := utils2.GetSymbolFrequencyMap(dataToCompress)
 
 	// Create a compression tree and generate the corresponding compression code for each unique byte with the weights being the frequency that each byte occurs
 	ht := trees.NewHuffmanTreeFromFrequencyMap(*freqMap)
@@ -22,14 +22,14 @@ func Compress(dataToCompress *[]byte) ([]byte, bool) {
 	//figure out the total bit length of the compressed data and create a new bit sequence to store the soon-to-be compressed data
 	compressedBitLen := 0
 	for _, bt := range *dataToCompress {
-		compressedBitLen += huffmanCodes[bt].GetNumBits()
+		compressedBitLen += huffmanCodes[uint16(bt)].GetNumBits()
 	}
 	bitSequenceOfCompressedData := bitstructs.NewBitSequence(compressedBitLen)
 
 	//For each character in the original uncompressed data append its corresponding compression code to the bit sequence
 	compressedDataBitIdx := 0
 	for _, bt := range *dataToCompress {
-		huffmanCodeBitSeq := huffmanCodes[bt]
+		huffmanCodeBitSeq := huffmanCodes[uint16(bt)]
 		bitIdx := huffmanCodeBitSeq.GetNumBits() - 1
 		for bitIdx >= 0 {
 			bitSequenceOfCompressedData.SetBit(compressedDataBitIdx, huffmanCodeBitSeq.GetBit(bitIdx))
@@ -90,7 +90,7 @@ func Decompress(data *[]byte) *[]byte {
 	return uncompressedData
 }
 
-func serializeHuffmanCodes(hc map[byte]bitstructs.BitSequence) []byte {
+func serializeHuffmanCodes(hc map[uint16]bitstructs.BitSequence) []byte {
 	//Will serialize as
 	//<char><bit_len><code-in-hex>_<char><bit_len>...<END (2 0x00 bytes)>
 	//1 byte  1 byte      X bytes					  2 0x00 bytes
@@ -101,10 +101,10 @@ func serializeHuffmanCodes(hc map[byte]bitstructs.BitSequence) []byte {
 	//byteToStringMap := make(map[byte]string)
 
 	for elem, bs := range hc {
-		buf.WriteByte(elem)
+		buf.WriteByte(byte(elem))
 		buf.WriteByte(byte(bs.GetNumBits()))
 		num := bs.GetXBytes(8)
-		str := utils.NumToHexString(uint(num))
+		str := utils.NumToHexString(num)
 		buf.Write([]byte(str))
 		buf.WriteByte('_')
 	}

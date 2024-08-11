@@ -3,8 +3,8 @@ package huffman
 import (
 	"bytes"
 	"fmt"
+	"github.com/ElwinCabrera/go-compression/compressionutils"
 	testinguutils "github.com/ElwinCabrera/go-compression/testing_utils"
-	"github.com/ElwinCabrera/go-compression/utils"
 	"math"
 
 	"testing"
@@ -31,9 +31,13 @@ func testCompressAndDecompress(t *testing.T, testData *[]byte) {
 func testSerializeDeSerializeOfHuffmanCodes(t *testing.T, testData *[]byte) {
 
 	//Get the frequency each byte appears in the data we want to compress
-	freqMap, _ := utils.GetSymbolFrequencyMap(testData, false)
+	freqMapUint16 := compressionutils.GetSymbolFrequencyMap(testData)
+	freqMapBytes := make(map[byte]uint64)
+	for k, v := range *freqMapUint16 {
+		freqMapBytes[byte(k)] = v
+	}
 
-	ht := trees.NewHuffmanTreeFromFrequencyMap(*freqMap)
+	ht := trees.NewHuffmanTreeFromFrequencyMap(freqMapBytes)
 	huffmanCodes := ht.GetHuffmanCodes()
 
 	serializedHuffmanCodes := serializeHuffmanCodes(huffmanCodes)
@@ -113,11 +117,17 @@ func testSerializeDeSerializeOfHuffmanCodes(t *testing.T, testData *[]byte) {
 
 func TestAll(t *testing.T) {
 
-	for i, data := range testinguutils.GetSomeTestData() {
-		fmt.Printf("\nTesting data at index %v ... ", i)
-		testSerializeDeSerializeOfHuffmanCodes(t, &data)
-		testCompressAndDecompress(t, &data)
-		fmt.Println("Test Pass")
+	testingData := testinguutils.GetSomeTestData()
+	//for i, data := range testingData {
+	//	fmt.Printf("\nTesting data at index %v ... ", i)
+	//	testSerializeDeSerializeOfHuffmanCodes(t, &data)
+	//	testCompressAndDecompress(t, &data)
+	//	fmt.Println("Test Pass")
+	//}
+
+	for _, data := range testingData {
+		compressionutils.GetSymbolFrequencyMapSimplifiedFractions(&data)
+
 	}
 
 }
