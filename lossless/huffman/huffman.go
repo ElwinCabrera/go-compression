@@ -13,23 +13,26 @@ func Compress(dataToCompress *[]byte) ([]byte, bool) {
 	canCompress := true
 
 	//Get the frequency each byte appears in the data we want to compress
-	freqMap := utils2.GetSymbolFrequencyMap(dataToCompress)
-
+	freqMapUint16 := utils2.GetSymbolFrequencyMap(dataToCompress)
+	freqMap := make(map[byte]uint64)
+	for k, v := range *freqMapUint16 {
+		freqMap[byte(k)] = v
+	}
 	// Create a compression tree and generate the corresponding compression code for each unique byte with the weights being the frequency that each byte occurs
-	ht := trees.NewHuffmanTreeFromFrequencyMap(*freqMap)
+	ht := trees.NewHuffmanTreeFromFrequencyMap(freqMap)
 	huffmanCodes := ht.GetHuffmanCodes()
 
 	//figure out the total bit length of the compressed data and create a new bit sequence to store the soon-to-be compressed data
 	compressedBitLen := 0
 	for _, bt := range *dataToCompress {
-		compressedBitLen += huffmanCodes[uint16(bt)].GetNumBits()
+		compressedBitLen += huffmanCodes[bt].GetNumBits()
 	}
 	bitSequenceOfCompressedData := bitstructs.NewBitSequence(compressedBitLen)
 
 	//For each character in the original uncompressed data append its corresponding compression code to the bit sequence
 	compressedDataBitIdx := 0
 	for _, bt := range *dataToCompress {
-		huffmanCodeBitSeq := huffmanCodes[uint16(bt)]
+		huffmanCodeBitSeq := huffmanCodes[bt]
 		bitIdx := huffmanCodeBitSeq.GetNumBits() - 1
 		for bitIdx >= 0 {
 			bitSequenceOfCompressedData.SetBit(compressedDataBitIdx, huffmanCodeBitSeq.GetBit(bitIdx))
@@ -90,7 +93,7 @@ func Decompress(data *[]byte) *[]byte {
 	return uncompressedData
 }
 
-func serializeHuffmanCodes(hc map[uint16]bitstructs.BitSequence) []byte {
+func serializeHuffmanCodes(hc map[byte]bitstructs.BitSequence) []byte {
 	//Will serialize as
 	//<char><bit_len><code-in-hex>_<char><bit_len>...<END (2 0x00 bytes)>
 	//1 byte  1 byte      X bytes					  2 0x00 bytes

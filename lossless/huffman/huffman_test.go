@@ -65,13 +65,13 @@ func testSerializeDeSerializeOfHuffmanCodes(t *testing.T, testData *[]byte) {
 
 	//This is the maximum entropy we can expect
 	//Minimum num of bits needed per symbol symbols when there is uniform probability i.e all symbols have same probability or each symbol is equally likely to occur 1/<num of unique symbols found>
-	probabilityOfEachSymbolOccurring := 1 / float64(len(*freqMap))
+	probabilityOfEachSymbolOccurring := 1 / float64(len(freqMapBytes))
 	inverseP := 1 / probabilityOfEachSymbolOccurring
-	maxEntropyWithUniformProb := probabilityOfEachSymbolOccurring * math.Log2(inverseP) * float64(len(*freqMap))
+	maxEntropyWithUniformProb := probabilityOfEachSymbolOccurring * math.Log2(inverseP) * float64(len(freqMapBytes))
 
 	//Now let's calculate the actual entropy
 	actualEntropy := 0.0
-	for _, freq := range *freqMap {
+	for _, freq := range freqMapBytes {
 		probabilityOfSymbolOccurring := float64(freq) / float64(len(*testData))
 		inverseP = 1 / probabilityOfSymbolOccurring
 		actualEntropy += probabilityOfSymbolOccurring * math.Log2(inverseP)
@@ -79,7 +79,7 @@ func testSerializeDeSerializeOfHuffmanCodes(t *testing.T, testData *[]byte) {
 
 	averageBitLengthPerSym := 0.0
 	for sym, bs := range huffmanCodes {
-		symWeight := float64((*freqMap)[sym]) / float64(len(*testData))
+		symWeight := float64((freqMapBytes)[sym]) / float64(len(*testData))
 		averageBitLengthPerSym += symWeight * float64(bs.GetNumBits())
 	}
 	//averageBitLength needs to be >= entropy and
@@ -91,7 +91,7 @@ func testSerializeDeSerializeOfHuffmanCodes(t *testing.T, testData *[]byte) {
 
 	//anything less than the entropy value is impossible
 
-	fmt.Printf("\n\tData size is %v containing %v unique symbols and each symbol can be any number between 0-%v\n", len(*testData), len(*freqMap), len(*freqMap)-1)
+	fmt.Printf("\n\tData size is %v containing %v unique symbols and each symbol can be any number between 0-%v\n", len(*testData), len(freqMapBytes), len(freqMapBytes)-1)
 	fmt.Printf("\tWorst case: Max Entropy with (uniform probability for each symbol): %f bits/sym\n", maxEntropyWithUniformProb)
 	fmt.Printf("\tActual entropy (actual min num of bits/sym) :%f bits/sym\n", actualEntropy)
 	fmt.Printf("\tAverage bits/sym: %f\n", averageBitLengthPerSym)
@@ -118,15 +118,11 @@ func testSerializeDeSerializeOfHuffmanCodes(t *testing.T, testData *[]byte) {
 func TestAll(t *testing.T) {
 
 	testingData := testinguutils.GetSomeTestData()
-	//for i, data := range testingData {
-	//	fmt.Printf("\nTesting data at index %v ... ", i)
-	//	testSerializeDeSerializeOfHuffmanCodes(t, &data)
-	//	testCompressAndDecompress(t, &data)
-	//	fmt.Println("Test Pass")
-	//}
-
-	for _, data := range testingData {
-		compressionutils.GetSymbolFrequencyMapSimplifiedFractions(&data)
+	for i, data := range testingData {
+		testSerializeDeSerializeOfHuffmanCodes(t, &data)
+		fmt.Printf("Serialization and Deserialization of huffman codes test PASS for dataset #%v with size of %v+1 bytes\n", i, len(data))
+		testCompressAndDecompress(t, &data)
+		fmt.Printf("Compression and Decompression test PASS for dataset #%v with size of %v+1 bytes\n\n", i, len(data))
 
 	}
 

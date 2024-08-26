@@ -21,7 +21,7 @@ func Compress(srcData *[]byte) ([]byte, bool) {
 	serializedFreqTable := serializeFrequencyTable(freqMap)
 
 	//fmt.Printf("Serialized frequency table method 1 length: %v\n", len(serializedFreqTable))
-	//fmt.Printf("Serialized frequency table method 2 length: %v\n", len(serializeFrequencyTable2(freqMap)))
+	fmt.Printf("Serialized frequency table method 2 length: %v\n", len(serializeFrequencyTable2(freqMap)))
 
 	compressedData := append(serializedFreqTable, encodedData...)
 	return compressedData, canCompress
@@ -200,6 +200,7 @@ func serializeFrequencyTable(freqTable *map[uint16]uint64) []byte {
 		}
 
 		//remove zeros from most significant byte (hex str is little endian so start from 0)
+		//this might not be needed because the generated hex string does not include non-significant zeros
 		for i := 0; i < len(serializedFreqHexStr); i++ {
 			bt := serializedFreqHexStr[i]
 			if bt == '0' {
@@ -269,23 +270,14 @@ func serializeFrequencyTable2(freqTable *map[uint16]uint64) []byte {
 	for symbol, freq := range *freqTable {
 
 		serializedFreq := uint64(0)
-		kb := freq / 1024
-		mb := kb / 1024
-		gb := mb / 1024
-		tb := gb / 1024
-		remainingBytes := freq % 1024
-		if tb != 0 {
-			gb = gb % 1024
-			mb = mb % 1024
-			kb = kb % 1024
-		} else if gb != 0 {
-			mb = mb % 1024
-			kb = kb % 1024
-		} else if mb != 0 {
-			kb = kb % 1024
-		}
 
-		units := []uint64{remainingBytes, kb, mb, gb, tb}
+		bytez := freq & 0x3FF
+		kb := (freq >> 10) & 0x3FF
+		mb := (freq >> 20) & 0x3FF
+		gb := (freq >> 30) & 0x3FF
+		tb := (freq >> 40) & 0x3FF
+
+		units := []uint64{bytez, kb, mb, gb, tb}
 		for i, unit := range units {
 			if unit != 0 {
 				serializedFreq |= 1 << i
